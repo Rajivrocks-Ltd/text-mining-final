@@ -1,0 +1,8 @@
+{
+    "best_hyperparameters": {
+        "batch_size": 8,
+        "learning_rate": 5e-06,
+        "weight_decay": 0.0
+    },
+    "best_f1": 0.7663770053475936
+}
