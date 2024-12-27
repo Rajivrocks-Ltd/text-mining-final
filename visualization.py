@@ -72,7 +72,7 @@ class Plotter:
     def _calculate_differences(self, metric="percentage", include_spread=False):
         """
         Helper function to calculate differences (percentage or absolute) between consecutive sample sizes.
-        :param metric: "percentage" or "absolute" to calculate the respective differences.
+        :param metric: "percentage" or "raw" to calculate the respective differences.
         :param include_spread: Boolean to include the spread (min and max) of the k-folds.
         :return: A dictionary of results for plotting.
         """
@@ -98,10 +98,10 @@ class Plotter:
 
             if metric == "percentage":
                 differences = (np.diff(means) / means[:-1]) * 100
-            elif metric == "absolute":
-                differences = np.abs(np.diff(means))
+            elif metric == "raw":
+                differences = np.diff(means)
             else:
-                raise ValueError("Invalid metric. Use 'percentage' or 'absolute'.")
+                raise ValueError("Invalid metric. Use 'percentage' or 'raw'.")
 
             result = {
                 "sample_sizes": sample_sizes[1:],
@@ -128,7 +128,7 @@ class Plotter:
         """
         Helper function to plot differences.
         :param results: Dictionary of results from _calculate_differences.
-        :param metric: The type of difference being plotted (e.g., 'percentage' or 'absolute').
+        :param metric: The type of difference being plotted (e.g., 'percentage' or 'raw').
         """
         plt.figure(figsize=(12, 8))
 
@@ -138,9 +138,9 @@ class Plotter:
                 plt.fill_between(data["sample_sizes"], data["min_diff"], data["max_diff"], alpha=0.2)
 
         plt.xlabel('Sample Size', fontsize=14)
-        y_label = 'Percentage Difference (%)' if metric == "percentage" else 'Absolute Difference in F1 Score'
+        y_label = 'Percentage Difference (%)' if metric == "percentage" else 'Raw Difference in F1 Score'
         plt.ylabel(y_label, fontsize=14)
-        title = 'Percentage Difference in Performance vs. Sample Size' if metric == "percentage" else 'Absolute Difference in Performance vs. Sample Size'
+        title = 'Percentage Difference in Performance vs. Sample Size' if metric == "percentage" else 'Raw Difference in Performance vs. Sample Size'
         plt.title(title, fontsize=16)
         plt.legend(title='Model', fontsize=12)
         plt.grid(True)
@@ -158,14 +158,14 @@ class Plotter:
         results = self._calculate_differences(metric="percentage", include_spread=include_spread)
         self._plot_differences(results, metric="percentage", save=save)
 
-    def plot_absolute_difference(self, include_spread=False, save=False):
+    def plot_raw_difference(self, include_spread=False, save=False):
         """
         Plot the absolute difference in performance between consecutive sample sizes.
         :param save: Save the generated plot as a PNG file, yes or no.
         :param include_spread: Boolean to include the spread (min and max) of the k-folds.
         """
-        results = self._calculate_differences(metric="absolute", include_spread=include_spread)
-        self._plot_differences(results, metric="absolute", save=save)
+        results = self._calculate_differences(metric="raw", include_spread=include_spread)
+        self._plot_differences(results, metric="raw", save=save)
 
 
 if __name__ == '__main__':
@@ -173,5 +173,5 @@ if __name__ == '__main__':
     plotter = Plotter(path)
     plotter.plot_model_performance(save=True)
     plotter.plot_percentage_difference(include_spread=False, save=True)
-    plotter.plot_absolute_difference(include_spread=False, save=True)
+    plotter.plot_raw_difference(include_spread=False, save=True)
 
