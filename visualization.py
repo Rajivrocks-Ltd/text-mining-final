@@ -28,6 +28,19 @@ class Plotter:
         except Exception as e:
             raise ValueError(f"Failed to load data from {file_path}: {e}")
 
+    def check_folds(self):
+        """
+        Check that each train size and model combination has exactly 5 entries (folds).
+        """
+        grouped = self.data.groupby(['Model', 'Train Size'])['K-Fold'].count()
+        invalid_entries = grouped[grouped != 5]
+
+        if invalid_entries.empty:
+            print("All train size and model combinations have exactly 5 folds.")
+        else:
+            print("The following model and train size combinations do not have exactly 5 folds:")
+            print(invalid_entries)
+
     def plot_model_performance(self, save=False):
         """
         Plot the performance of models with shaded variance.
@@ -171,7 +184,8 @@ class Plotter:
 if __name__ == '__main__':
     path = "experimental_results/Experiments_full_labeled.xlsx"
     plotter = Plotter(path)
-    plotter.plot_model_performance(save=True)
-    plotter.plot_percentage_difference(include_spread=False, save=True)
-    plotter.plot_raw_difference(include_spread=False, save=True)
+    plotter.check_folds()
+    # plotter.plot_model_performance(save=True)
+    # plotter.plot_percentage_difference(include_spread=False, save=True)
+    # plotter.plot_raw_difference(include_spread=False, save=True)
 
