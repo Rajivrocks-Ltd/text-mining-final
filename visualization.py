@@ -28,22 +28,30 @@ class Plotter:
         except Exception as e:
             raise ValueError(f"Failed to load data from {file_path}: {e}")
 
-    def check_folds(self):
+    def check_folds(self, expected_folds=None):
         """
-        Check that each train size and model combination has exactly 5 entries (folds).
+        Check the number of entries (folds) for each train size and model combination.
+        :param expected_folds: Expected number of folds. If specified, validate against this number.
         """
         grouped = self.data.groupby(['Model', 'Train Size'])['K-Fold'].count()
-        invalid_entries = grouped[grouped != 5]
 
-        if invalid_entries.empty:
-            print("All train size and model combinations have exactly 5 folds.")
+        if expected_folds is not None:
+            # Check for mismatches against the expected number of folds
+            invalid_entries = grouped[grouped != expected_folds]
+            if invalid_entries.empty:
+                print(f"All train size and model combinations have exactly {expected_folds} folds.")
+            else:
+                print(f"The following model and train size combinations do not have exactly {expected_folds} folds:")
+                print(invalid_entries)
         else:
-            print("The following model and train size combinations do not have exactly 5 folds:")
-            print(invalid_entries)
+            # Display the fold counts for all combinations
+            print("Fold counts for each model and train size combination:")
+            print(grouped)
 
-    def plot_model_performance(self, save=False):
+    def plot_model_performance(self, save=False, name=None):
         """
         Plot the performance of models with shaded variance.
+        :param name: Specify the name of the plot using the K-Fold and Train Size.
         :param save: Save the generated plot as a PNG file, yes or no.
         """
         plt.figure(figsize=(12, 8))
@@ -74,11 +82,11 @@ class Plotter:
 
         plt.xlabel('Train Size', fontsize=14)
         plt.ylabel('F1 Score', fontsize=14)
-        plt.title('Model Performance vs. Train Size', fontsize=16)
+        plt.title(f'Model Performance vs. Train Size: {name}', fontsize=16)
         plt.legend(title='Model', fontsize=12)
         plt.grid(True)
         if save:
-            plt.savefig('experimental_results/model_performance.png')
+            plt.savefig(f'experimental_results/model_performance_{name}.png')
         else:
             plt.show()
 
@@ -137,7 +145,7 @@ class Plotter:
         return results
 
     @staticmethod
-    def _plot_differences(results, metric, save=False):
+    def _plot_differences(results, metric, save=False, name=None):
         """
         Helper function to plot differences.
         :param results: Dictionary of results from _calculate_differences.
@@ -153,39 +161,53 @@ class Plotter:
         plt.xlabel('Sample Size', fontsize=14)
         y_label = 'Percentage Difference (%)' if metric == "percentage" else 'Raw Difference in F1 Score'
         plt.ylabel(y_label, fontsize=14)
-        title = 'Percentage Difference in Performance vs. Sample Size' if metric == "percentage" else 'Raw Difference in Performance vs. Sample Size'
+        title = f'Percentage Difference in Performance vs. Sample Size: {name}' if metric == "percentage" else f'Raw Difference in Performance vs. Sample Size: {name}'
         plt.title(title, fontsize=16)
         plt.legend(title='Model', fontsize=12)
         plt.grid(True)
         if save:
-            plt.savefig(f'experimental_results/{metric}.png')
+            plt.savefig(f'experimental_results/{metric}_{name}.png')
         else:
             plt.show()
 
-    def plot_percentage_difference(self, include_spread=False, save=False):
+    def plot_percentage_difference(self, include_spread=False, save=False, name=None):
         """
         Plot the percentage difference in performance between consecutive sample sizes.
+        :param name: Specify the name of the plot using the K-Fold and Train Size.
         :param save: Save the generated plot as a PNG file, yes or no.
         :param include_spread: Boolean to include the spread (min and max) of the k-folds.
         """
         results = self._calculate_differences(metric="percentage", include_spread=include_spread)
-        self._plot_differences(results, metric="percentage", save=save)
+        self._plot_differences(results, metric="percentage", save=save, name=name)
 
-    def plot_raw_difference(self, include_spread=False, save=False):
+    def plot_raw_difference(self, include_spread=False, save=False, name=None):
         """
         Plot the absolute difference in performance between consecutive sample sizes.
+        :param name: Specify the name of the plot using the K-Fold and Train Size.
         :param save: Save the generated plot as a PNG file, yes or no.
         :param include_spread: Boolean to include the spread (min and max) of the k-folds.
         """
         results = self._calculate_differences(metric="raw", include_spread=include_spread)
-        self._plot_differences(results, metric="raw", save=save)
+        self._plot_differences(results, metric="raw", save=save, name=name)
 
 
 if __name__ == '__main__':
     path = "experimental_results/Experiments_full_labeled.xlsx"
+    path2 = "experimental_results/Experiments_moreksplits10_lesssteps20_for_smoother_graphh.xlsx"
+
+    # Plotting 5-Fold 5 Train
+    name = "5-Fold 5 Train Size"
     plotter = Plotter(path)
-    plotter.check_folds()
-    # plotter.plot_model_performance(save=True)
-    # plotter.plot_percentage_difference(include_spread=False, save=True)
-    # plotter.plot_raw_difference(include_spread=False, save=True)
+    plotter.check_folds(expected_folds=5)
+    plotter.plot_model_performance(save=True, name=name)
+    plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
+    plotter.plot_raw_difference(include_spread=False, save=True, name=name)
+
+    # Plotting 10-Fold 20 Train
+    name = "10-Fold 20 Train Size"
+    plotter = Plotter(path2)
+    plotter.check_folds(expected_folds=10)
+    plotter.plot_model_performance(save=True, name=name)
+    plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
+    plotter.plot_raw_difference(include_spread=False, save=True, name=name)
 
