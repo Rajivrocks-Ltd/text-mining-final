@@ -181,13 +181,6 @@ one O
 leg O
 . O
 
-Very O
-little O
-if O
-any O
-! O
-. O
-
 Side O
 effects O
 were O
@@ -200,4 +193,11 @@ up O
 and O
 fell O
 off O
+. O
+
+Very O
+little O
+if O
+any O
+! O
 . O

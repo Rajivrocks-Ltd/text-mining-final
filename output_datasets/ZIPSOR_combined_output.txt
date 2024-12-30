@@ -1,25 +1,3 @@
-Gave O
-pretty O
-good O
-pain B-Symptom
-relief O
-, O
-with O
-no O
-side O
-effects O
-, O
-and O
-is O
-very O
-fast O
-acting O
-. O
-Better O
-than O
-mobic B-Drug
-. O
-
 Haven't O
 really O
 experienced O
@@ -79,25 +57,26 @@ throat I-Symptom
 ! O
 . O
 
-stiff B-ADR
-neck I-ADR
-, O
-tightness B-ADR
-in I-ADR
-shoulders I-ADR
-, O
-muscle B-ADR
-pain I-ADR
-. O
-not O
-recommended O
-. O
-
-nausea B-ADR
-. O
-some O
+Gave O
+pretty O
+good O
 pain B-Symptom
 relief O
+, O
+with O
+no O
+side O
+effects O
+, O
+and O
+is O
+very O
+fast O
+acting O
+. O
+Better O
+than O
+mobic B-Drug
 . O
 
 I O
@@ -224,4 +203,25 @@ no O
 recognizable O
 side O
 effects O
+. O
+
+stiff B-ADR
+neck I-ADR
+, O
+tightness B-ADR
+in I-ADR
+shoulders I-ADR
+, O
+muscle B-ADR
+pain I-ADR
+. O
+not O
+recommended O
+. O
+
+nausea B-ADR
+. O
+some O
+pain B-Symptom
+relief O
 . O

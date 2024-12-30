@@ -128,6 +128,10 @@ does O
 ! O
 . O
 
+Didn't O
+work O
+. O
+
 Once O
 I O
 had O
@@ -215,8 +219,4 @@ insurance O
 is O
 too O
 expensive O
-. O
-
-Didn't O
-work O
 . O
