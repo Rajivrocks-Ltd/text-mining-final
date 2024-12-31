@@ -28,6 +28,41 @@ class Plotter:
         except Exception as e:
             raise ValueError(f"Failed to load data from {file_path}: {e}")
 
+    @staticmethod
+    def combine_data(file_path_1, file_path_2, file_name=None):
+        """
+        Combine two Excel files into a single pandas DataFrame.
+        :param file_path_1: Path to the first Excel file.
+        :param file_path_2: Path to the second Excel file.
+        :param file_name: Optional path to save the combined data.
+        :return: Combined pandas DataFrame.
+        """
+        try:
+            data1 = pd.read_excel(file_path_1)
+            data2 = pd.read_excel(file_path_2)
+
+            # Ensure both files have the required columns
+            required_columns = ['Train Size', 'K-Fold', 'Test F1', 'Model']
+            if not all(column in data1.columns for column in required_columns):
+                raise ValueError(f"The first input file must contain the following columns: {required_columns}")
+            if not all(column in data2.columns for column in required_columns):
+                raise ValueError(f"The second input file must contain the following columns: {required_columns}")
+
+            # Concatenate the two datasets
+            combined_data = pd.concat([data1, data2], ignore_index=True)
+            print("Combined data successfully.")
+
+            # Save the combined data if a save path is provided
+            combined_data.to_excel(f"experimental_results/sheets/{file_name}.xlsx", index=False)
+            print(f"Combined data saved to {file_name}")
+
+            save_path = f"experimental_results/sheets/{file_name}.xlsx"
+
+            return save_path
+
+        except Exception as e:
+            raise ValueError(f"Failed to combine data from the files: {e}")
+
     def check_folds(self, expected_folds=None):
         """
         Check the number of entries (folds) for each train size and model combination.
@@ -192,12 +227,16 @@ class Plotter:
 
 
 if __name__ == '__main__':
-    path = "experimental_results/Experiments_full_labeled.xlsx"
-    path2 = "experimental_results/Experiments_moreksplits10_lesssteps20_for_smoother_graphh.xlsx"
+    path = "experimental_results/sheets/Experiments_full_labeled.xlsx"
+    path2 = "experimental_results/sheets/Experiments_moreksplits10_lesssteps20_for_smoother_graphh.xlsx"
+
+    path_biobert = "experimental_results/sheets/Experiments_full_labeled_biobert.xlsx"
+    path_biobert2 = "experimental_results/sheets/Experiments_moreksplits10_lesssteps20_for_smoother_graphh_biobert.xlsx"
 
     # Plotting 5-Fold 5 Train
     name = "5-Fold 5 Train Size"
-    plotter = Plotter(path)
+    combined_data = Plotter.combine_data(path, path_biobert, f"combined_data_{name}")
+    plotter = Plotter(combined_data)
     plotter.check_folds(expected_folds=5)
     plotter.plot_model_performance(save=True, name=name)
     plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
@@ -205,7 +244,8 @@ if __name__ == '__main__':
 
     # Plotting 10-Fold 20 Train
     name = "10-Fold 20 Train Size"
-    plotter = Plotter(path2)
+    combined_data = Plotter.combine_data(path2, path_biobert2, f"combined_data_{name}")
+    plotter = Plotter(combined_data)
     plotter.check_folds(expected_folds=10)
     plotter.plot_model_performance(save=True, name=name)
     plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
