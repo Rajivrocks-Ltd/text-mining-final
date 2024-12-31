@@ -233,6 +233,8 @@ if __name__ == '__main__':
     path_biobert = "experimental_results/sheets/Experiments_full_labeled_biobert.xlsx"
     path_biobert2 = "experimental_results/sheets/Experiments_moreksplits10_lesssteps20_for_smoother_graphh_biobert.xlsx"
 
+    lipitor = "experimental_results/sheets/Experiments_lipitor.xlsx"
+
     # Plotting 5-Fold 5 Train
     name = "5-Fold 5 Train Size"
     combined_data = Plotter.combine_data(path, path_biobert, f"combined_data_{name}")
@@ -247,6 +249,14 @@ if __name__ == '__main__':
     combined_data = Plotter.combine_data(path2, path_biobert2, f"combined_data_{name}")
     plotter = Plotter(combined_data)
     plotter.check_folds(expected_folds=10)
+    plotter.plot_model_performance(save=True, name=name)
+    plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
+    plotter.plot_raw_difference(include_spread=False, save=True, name=name)
+
+    # Plotting 5-Fold 5 Train for Lipitor
+    name = "5-Fold 5 Train Size - Lipitor"
+    plotter = Plotter(lipitor)
+    plotter.check_folds(expected_folds=5)
     plotter.plot_model_performance(save=True, name=name)
     plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
     plotter.plot_raw_difference(include_spread=False, save=True, name=name)
