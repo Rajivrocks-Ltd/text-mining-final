@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
-
 class Plotter:
     def __init__(self, file_path):
         """
@@ -24,9 +23,15 @@ class Plotter:
             required_columns = ['Train Size', 'K-Fold', 'Test F1', 'Model']
             if not all(column in data.columns for column in required_columns):
                 raise ValueError(f"The input file must contain the following columns: {required_columns}")
+
+            # Add default Epoch column if missing
+            if 'Epoch' not in data.columns:
+                data['Epoch'] = 1  # Default epoch value for backward compatibility
+
             return data
         except Exception as e:
             raise ValueError(f"Failed to load data from {file_path}: {e}")
+
 
     @staticmethod
     def combine_data(file_path_1, file_path_2, file_name=None):
@@ -41,8 +46,14 @@ class Plotter:
             data1 = pd.read_excel(file_path_1)
             data2 = pd.read_excel(file_path_2)
 
+            # Add default Epoch column if missing
+            if 'Epoch' not in data1.columns:
+                data1['Epoch'] = 1
+            if 'Epoch' not in data2.columns:
+                data2['Epoch'] = 1
+
             # Ensure both files have the required columns
-            required_columns = ['Train Size', 'K-Fold', 'Test F1', 'Model']
+            required_columns = ['Train Size', 'K-Fold', 'Test F1', 'Model', 'Epoch']
             if not all(column in data1.columns for column in required_columns):
                 raise ValueError(f"The first input file must contain the following columns: {required_columns}")
             if not all(column in data2.columns for column in required_columns):
@@ -53,72 +64,75 @@ class Plotter:
             print("Combined data successfully.")
 
             # Save the combined data if a save path is provided
-            combined_data.to_excel(f"experimental_results/sheets/{file_name}.xlsx", index=False)
-            print(f"Combined data saved to {file_name}")
+            if file_name:
+                combined_data.to_excel(f"experimental_results/sheets/{file_name}.xlsx", index=False)
+                print(f"Combined data saved to experimental_results/sheets/{file_name}.xlsx")
 
-            save_path = f"experimental_results/sheets/{file_name}.xlsx"
-
-            return save_path
+            return combined_data
 
         except Exception as e:
             raise ValueError(f"Failed to combine data from the files: {e}")
 
+
     def check_folds(self, expected_folds=None):
         """
-        Check the number of entries (folds) for each train size and model combination.
+        Check the number of entries (folds) for each train size, model, and epoch combination.
         :param expected_folds: Expected number of folds. If specified, validate against this number.
         """
-        grouped = self.data.groupby(['Model', 'Train Size'])['K-Fold'].count()
+        grouped = self.data.groupby(['Model', 'Train Size', 'Epoch'])['K-Fold'].count()
 
         if expected_folds is not None:
             # Check for mismatches against the expected number of folds
             invalid_entries = grouped[grouped != expected_folds]
             if invalid_entries.empty:
-                print(f"All train size and model combinations have exactly {expected_folds} folds.")
+                print(f"All train size, model, and epoch combinations have exactly {expected_folds} folds.")
             else:
-                print(f"The following model and train size combinations do not have exactly {expected_folds} folds:")
+                print(f"The following model, train size, and epoch combinations do not have exactly {expected_folds} folds:")
                 print(invalid_entries)
         else:
             # Display the fold counts for all combinations
-            print("Fold counts for each model and train size combination:")
+            print("Fold counts for each model, train size, and epoch combination:")
             print(grouped)
 
     def plot_model_performance(self, save=False, name=None):
         """
-        Plot the performance of models with shaded variance.
-        :param name: Specify the name of the plot using the K-Fold and Train Size.
+        Plot the performance of models with shaded variance, grouped by epoch.
+        :param name: Specify the name of the plot using the K-Fold, Train Size, and Epoch.
         :param save: Save the generated plot as a PNG file, yes or no.
         """
         plt.figure(figsize=(12, 8))
 
         models = self.data['Model'].unique()
+        epochs = sorted(self.data['Epoch'].unique())
         training_size = sorted(self.data['Train Size'].unique())
 
-        for model in models:
-            model_data = self.data[self.data['Model'] == model]
+        for epoch in epochs:
+            epoch_data = self.data[self.data['Epoch'] == epoch]
+            for model in models:
+                model_data = epoch_data[epoch_data['Model'] == model]
 
-            means = []
-            mins = []
-            maxs = []
+                means = []
+                mins = []
+                maxs = []
 
-            for size in training_size:
-                size_data = model_data[model_data['Train Size'] == size]['Test F1']
+                for size in training_size:
+                    size_data = model_data[model_data['Train Size'] == size]['Test F1']
 
-                means.append(size_data.mean())
-                mins.append(size_data.min())
-                maxs.append(size_data.max())
+                    means.append(size_data.mean())
+                    mins.append(size_data.min())
+                    maxs.append(size_data.max())
 
-            means = np.array(means)
-            mins = np.array(mins)
-            maxs = np.array(maxs)
+                means = np.array(means)
+                mins = np.array(mins)
+                maxs = np.array(maxs)
 
-            plt.plot(training_size, means, label=f'{model}')
-            plt.fill_between(training_size, mins, maxs, alpha=0.2)
+                plt.plot(training_size, means, label=f'{model} (Epoch {epoch})')
+                plt.fill_between(training_size, mins, maxs, alpha=0.2)
 
         plt.xlabel('Train Size', fontsize=14)
         plt.ylabel('F1 Score', fontsize=14)
         plt.title(f'Model Performance vs. Train Size: {name}', fontsize=16)
-        plt.legend(title='Model', fontsize=12)
+        plt.legend(title='Model (Epoch)', fontsize=12)
         plt.grid(True)
         if save:
             plt.savefig(f'experimental_results/model_performance_{name}.png')
@@ -127,55 +141,58 @@ class Plotter:
 
     def _calculate_differences(self, metric="percentage", include_spread=False):
         """
-        Helper function to calculate differences (percentage or absolute) between consecutive sample sizes.
+        Helper function to calculate differences (percentage or absolute) between consecutive sample sizes, grouped by epoch.
         :param metric: "percentage" or "raw" to calculate the respective differences.
         :param include_spread: Boolean to include the spread (min and max) of the k-folds.
         :return: A dictionary of results for plotting.
         """
         results = {}
         models = self.data['Model'].unique()
+        epochs = sorted(self.data['Epoch'].unique())
         sample_sizes = sorted(self.data['Train Size'].unique())
 
-        for model in models:
-            model_data = self.data[self.data['Model'] == model]
+        for epoch in epochs:
+            epoch_data = self.data[self.data['Epoch'] == epoch]
+            for model in models:
+                model_data = epoch_data[epoch_data['Model'] == model]
 
-            means = []
-            mins = []
-            maxs = []
+                means = []
+                mins = []
+                maxs = []
 
-            for size in sample_sizes:
-                size_data = model_data[model_data['Train Size'] == size]['Test F1']
-                means.append(size_data.mean())
-                if include_spread:
-                    mins.append(size_data.min())
-                    maxs.append(size_data.max())
+                for size in sample_sizes:
+                    size_data = model_data[model_data['Train Size'] == size]['Test F1']
+                    means.append(size_data.mean())
+                    if include_spread:
+                        mins.append(size_data.min())
+                        maxs.append(size_data.max())
 
-            means = np.array(means)
+                means = np.array(means)
 
-            if metric == "percentage":
-                differences = (np.diff(means) / means[:-1]) * 100
-            elif metric == "raw":
-                differences = np.diff(means)
-            else:
-                raise ValueError("Invalid metric. Use 'percentage' or 'raw'.")
-
-            result = {
-                "sample_sizes": sample_sizes[1:],
-                "differences": differences,
-            }
-
-            if include_spread:
                 if metric == "percentage":
-                    min_diff = (np.diff(np.array(mins)) / np.array(mins[:-1])) * 100
-                    max_diff = (np.diff(np.array(maxs)) / np.array(maxs[:-1])) * 100
-                elif metric == "absolute":
-                    min_diff = np.abs(np.diff(np.array(mins)))
-                    max_diff = np.abs(np.diff(np.array(maxs)))
+                    differences = (np.diff(means) / means[:-1]) * 100
+                elif metric == "raw":
+                    differences = np.diff(means)
+                else:
+                    raise ValueError("Invalid metric. Use 'percentage' or 'raw'.")
 
-                result["min_diff"] = min_diff
-                result["max_diff"] = max_diff
+                result = {
+                    "sample_sizes": sample_sizes[1:],
+                    "differences": differences,
+                }
 
-            results[model] = result
+                if include_spread:
+                    if metric == "percentage":
+                        min_diff = (np.diff(np.array(mins)) / np.array(mins[:-1])) * 100
+                        max_diff = (np.diff(np.array(maxs)) / np.array(maxs[:-1])) * 100
+                    elif metric == "absolute":
+                        min_diff = np.abs(np.diff(np.array(mins)))
+                        max_diff = np.abs(np.diff(np.array(maxs)))
+
+                    result["min_diff"] = min_diff
+                    result["max_diff"] = max_diff
+
+                results[f'{model} (Epoch {epoch})'] = result
 
         return results
 
@@ -188,8 +205,8 @@ class Plotter:
         """
         plt.figure(figsize=(12, 8))
 
-        for model, data in results.items():
-            plt.plot(data["sample_sizes"], data["differences"], label=f'{model}')
+        for model_epoch, data in results.items():
+            plt.plot(data["sample_sizes"], data["differences"], label=f'{model_epoch}')
             if "min_diff" in data and "max_diff" in data:
                 plt.fill_between(data["sample_sizes"], data["min_diff"], data["max_diff"], alpha=0.2)
 
@@ -198,7 +215,7 @@ class Plotter:
         plt.ylabel(y_label, fontsize=14)
         title = f'Percentage Difference in Performance vs. Sample Size: {name}' if metric == "percentage" else f'Raw Difference in Performance vs. Sample Size: {name}'
         plt.title(title, fontsize=16)
-        plt.legend(title='Model', fontsize=12)
+        plt.legend(title='Model (Epoch)', fontsize=12)
         plt.grid(True)
         if save:
             plt.savefig(f'experimental_results/{metric}_{name}.png')
@@ -208,7 +225,7 @@ class Plotter:
     def plot_percentage_difference(self, include_spread=False, save=False, name=None):
         """
         Plot the percentage difference in performance between consecutive sample sizes.
-        :param name: Specify the name of the plot using the K-Fold and Train Size.
+        :param name: Specify the name of the plot using the K-Fold, Train Size, and Epoch.
         :param save: Save the generated plot as a PNG file, yes or no.
         :param include_spread: Boolean to include the spread (min and max) of the k-folds.
         """
@@ -218,7 +235,7 @@ class Plotter:
     def plot_raw_difference(self, include_spread=False, save=False, name=None):
         """
         Plot the absolute difference in performance between consecutive sample sizes.
-        :param name: Specify the name of the plot using the K-Fold and Train Size.
+        :param name: Specify the name of the plot using the K-Fold, Train Size, and Epoch.
         :param save: Save the generated plot as a PNG file, yes or no.
         :param include_spread: Boolean to include the spread (min and max) of the k-folds.
         """
@@ -235,29 +252,38 @@ if __name__ == '__main__':
 
     lipitor = "experimental_results/sheets/Experiments_lipitor.xlsx"
 
-    # Plotting 5-Fold 5 Train
-    name = "5-Fold 5 Train Size"
-    combined_data = Plotter.combine_data(path, path_biobert, f"combined_data_{name}")
-    plotter = Plotter(combined_data)
+    path_roberta = "experimental_results/sheets/Experiments_Roberta_epoch_complete.xlsx"
+
+    # # Plotting 5-Fold 5 Train
+    # name = "5-Fold 5 Train Size"
+    # combined_data = Plotter.combine_data(path, path_biobert, f"combined_data_{name}")
+    # plotter = Plotter(combined_data)
+    # plotter.check_folds(expected_folds=5)
+    # plotter.plot_model_performance(save=True, name=name)
+    # plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
+    # plotter.plot_raw_difference(include_spread=False, save=True, name=name)
+    #
+    # # Plotting 10-Fold 20 Train
+    # name = "10-Fold 20 Train Size"
+    # combined_data = Plotter.combine_data(path2, path_biobert2, f"combined_data_{name}")
+    # plotter = Plotter(combined_data)
+    # plotter.check_folds(expected_folds=10)
+    # plotter.plot_model_performance(save=True, name=name)
+    # plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
+    # plotter.plot_raw_difference(include_spread=False, save=True, name=name)
+    #
+    # # Plotting 5-Fold 5 Train for Lipitor
+    # name = "5-Fold 5 Train Size - Lipitor"
+    # plotter = Plotter(lipitor)
+    # plotter.check_folds(expected_folds=5)
+    # plotter.plot_model_performance(save=True, name=name)
+    # plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
+    # plotter.plot_raw_difference(include_spread=False, save=True, name=name)
+
+    # Plotting 5-Fold 5 Train for Roberta
+    name = "5-Fold 5 Train Size - Roberta"
+    plotter = Plotter(path_roberta)
     plotter.check_folds(expected_folds=5)
     plotter.plot_model_performance(save=True, name=name)
     plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
     plotter.plot_raw_difference(include_spread=False, save=True, name=name)
-
-    # Plotting 10-Fold 20 Train
-    name = "10-Fold 20 Train Size"
-    combined_data = Plotter.combine_data(path2, path_biobert2, f"combined_data_{name}")
-    plotter = Plotter(combined_data)
-    plotter.check_folds(expected_folds=10)
-    plotter.plot_model_performance(save=True, name=name)
-    plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
-    plotter.plot_raw_difference(include_spread=False, save=True, name=name)
-
-    # Plotting 5-Fold 5 Train for Lipitor
-    name = "5-Fold 5 Train Size - Lipitor"
-    plotter = Plotter(lipitor)
-    plotter.check_folds(expected_folds=5)
-    plotter.plot_model_performance(save=True, name=name)
-    plotter.plot_percentage_difference(include_spread=False, save=True, name=name)
-    plotter.plot_raw_difference(include_spread=False, save=True, name=name)
-
